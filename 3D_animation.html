@@ -43,6 +43,11 @@
             transition: transform 0.3s ease, opacity 0.3s ease;
             z-index: 100;
         }
+        #ui-panel.collapsed {
+            transform: translateX(-360px);
+            opacity: 0;
+            pointer-events: none;
+        }
         
         /* Mobile responsive styles */
         @media (max-width: 768px) {
@@ -55,18 +60,6 @@
                 max-height: calc(100vh - 60px);
                 font-size: 14px;
             }
-            
-            #ui-panel.collapsed {
-                transform: translateY(-100%);
-                opacity: 0;
-                pointer-events: none;
-            }
-        }
-
-        @media (min-width: 769px) {
-            #ui-panel.collapsed {
-                transform: translateX(-340px);
-            }
         }
 
         #toggle-ui {
@@ -76,14 +69,20 @@
             background: var(--panel-bg);
             color: white;
             border: 1px solid rgba(255,255,255,0.15);
-            padding: 10px 14px;
+            padding: 0;
             cursor: pointer;
             border-radius: 8px;
             transition: all 0.3s ease;
-            z-index: 99;
+            z-index: 101;
             backdrop-filter: blur(10px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             font-weight: 500;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
         }
         
         #toggle-ui:hover {
@@ -91,31 +90,15 @@
             transform: scale(1.05);
         }
         
-        @media (min-width: 769px) {
-            #ui-panel.collapsed + #toggle-ui {
-                left: 10px;
-            }
+        #ui-panel.collapsed + #toggle-ui {
+            left: 10px;
         }
         
         @media (max-width: 768px) {
             #toggle-ui {
-                top: auto;
-                bottom: 15px;
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 12px 24px;
-                border-radius: 25px;
-                font-size: 14px;
-                min-width: 120px;
-                text-align: center;
-            }
-            
-            #toggle-ui:hover {
-                transform: translateX(-50%) scale(1.05);
-            }
-            
-            #ui-panel.collapsed + #toggle-ui {
-                left: 50%;
+                width: 44px;
+                height: 44px;
+                font-size: 22px;
             }
         }
 
@@ -403,7 +386,7 @@
         </div>
     </div>
 
-    <button id="toggle-ui">Hide UI</button>
+    <button id="toggle-ui" aria-label="Hide UI Panel">×</button>
 
     <script type="module">
         import * as THREE from 'three';
@@ -486,7 +469,11 @@
             // Auto-collapse UI on mobile
             if (window.innerWidth <= 768) {
                 ui.panel.classList.add('collapsed');
-                ui.toggle.textContent = 'Show UI';
+                ui.toggle.innerHTML = '☰';
+                ui.toggle.setAttribute('aria-label', 'Show UI Panel');
+            } else {
+                ui.toggle.innerHTML = '×';
+                ui.toggle.setAttribute('aria-label', 'Hide UI Panel');
             }
 
             // Initial Setup
@@ -724,7 +711,9 @@
 
             ui.toggle.addEventListener('click', () => {
                 ui.panel.classList.toggle('collapsed');
-                ui.toggle.textContent = ui.panel.classList.contains('collapsed') ? 'Show UI' : 'Hide UI';
+                // Update icon based on state: ☰ (menu/hamburger) when collapsed, × (close) when expanded
+                ui.toggle.innerHTML = ui.panel.classList.contains('collapsed') ? '☰' : '×';
+                ui.toggle.setAttribute('aria-label', ui.panel.classList.contains('collapsed') ? 'Show UI Panel' : 'Hide UI Panel');
             });
 
             ui.preset.addEventListener('change', loadPreset);
