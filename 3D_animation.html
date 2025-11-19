@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Vector Field Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #111;
+            --panel-bg: rgba(20, 20, 30, 0.85);
+            --text-color: #eee;
+            --accent-color: #4f9fff;
+            --error-color: #ff5555;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 320px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        #ui-panel.collapsed {
+            transform: translateX(-340px);
+        }
+
+        #toggle-ui {
+            position: absolute;
+            top: 10px;
+            left: 340px;
+            background: var(--panel-bg);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: left 0.3s ease;
+            z-index: 10;
+        }
+        
+        #ui-panel.collapsed + #toggle-ui {
+            left: 10px;
+        }
+
+        h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: var(--accent-color);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #aaa;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .input-label {
+            width: 30px;
+            font-weight: bold;
+            font-family: monospace;
+            color: var(--accent-color);
+        }
+
+        input[type="text"], select {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #444;
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3a85e0;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-row input {
+            margin-right: 10px;
+        }
+
+        .info-text {
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+
+        #error-msg {
+            color: var(--error-color);
+            font-size: 12px;
+            margin-top: 10px;
+            display: none;
+            background: rgba(255, 85, 85, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #222; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+    </style>
+    <!-- Import Three.js as ES Module -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-panel">
+        <h2>Vector Field Controls</h2>
+
+        <div class="control-group">
+            <label>Presets</label>
+            <select id="preset-select">
+                <option value="saddle">Saddle Point</option>
+                <option value="spiral">Cylindrical Spiral</option>
+                <option value="sink">Spherical Sink</option>
+                <option value="chaos">Strange Attractor</option>
+                <option value="wave">Sine Waves</option>
+                <option value="time">Time Variant (Pulsing)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Vector Function F(x, y, z)</label>
+            <div class="input-row">
+                <span class="input-label">Vx:</span>
+                <input type="text" id="func-x" value="y">
+            </div>
+            <div class="input-row">
+                <span class="input-label">Vy:</span>
+                <input type="text" id="func-y" value="x">
+            </div>
+            <div class="input-row">
+                <span class="input-label">Vz:</span>
+                <input type="text" id="func-z" value="0">
+            </div>
+            <div class="info-text">Use variables: x, y, z, t (time).<br>Math supported: sin, cos, exp, abs, etc.</div>
+            <div id="error-msg">Syntax Error in Function</div>
+        </div>
+
+        <button id="update-btn">Update Field</button>
+
+        <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
+            <div class="control-group">
+                <label>Particle Speed (<span id="val-speed">0.5</span>)</label>
+                <input type="range" id="slider-speed" min="0" max="2" step="0.01" value="0.5">
+            </div>
+    
+            <div class="control-group">
+                <label>Particle Count (<span id="val-count">5000</span>)</label>
+                <input type="range" id="slider-count" min="1000" max="20000" step="1000" value="5000">
+            </div>
+
+            <div class="checkbox-row">
+                <input type="checkbox" id="check-arrows">
+                <label for="check-arrows" style="margin:0">Show Arrow Grid (Heavy)</label>
+            </div>
+
+            <div class="checkbox-row">
+                <input type="checkbox" id="check-color" checked>
+                <label for="check-color" style="margin:0">Color by Velocity</label>
+            </div>
+        </div>
+        
+        <div style="margin-top:10px; font-size: 11px; color: #666;">
+            Left Click: Rotate | Right Click: Pan | Scroll: Zoom
+        </div>
+    </div>
+
+    <button id="toggle-ui">Hide UI</button>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Configuration ---
+        const CONFIG = {
+            boxSize: 10,
+            particleCount: 5000,
+            speed: 0.5,
+            arrowDensity: 2, // Grid step size
+            arrowLength: 0.6,
+            particleColor: 0x4f9fff,
+            particleSize: 0.15
+        };
+
+        // --- Global Variables ---
+        let scene, camera, renderer, controls;
+        let particleSystem, arrowGroup;
+        let clock;
+        let vectorFuncs = { x: null, y: null, z: null };
+        let time = 0;
+
+        // --- Input Elements ---
+        const ui = {
+            x: document.getElementById('func-x'),
+            y: document.getElementById('func-y'),
+            z: document.getElementById('func-z'),
+            updateBtn: document.getElementById('update-btn'),
+            speed: document.getElementById('slider-speed'),
+            count: document.getElementById('slider-count'),
+            arrows: document.getElementById('check-arrows'),
+            color: document.getElementById('check-color'),
+            preset: document.getElementById('preset-select'),
+            error: document.getElementById('error-msg'),
+            panel: document.getElementById('ui-panel'),
+            toggle: document.getElementById('toggle-ui'),
+            valSpeed: document.getElementById('val-speed'),
+            valCount: document.getElementById('val-count')
+        };
+
+        // --- Initialization ---
+        function init() {
+            // Scene Setup
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111111);
+            scene.fog = new THREE.Fog(0x111111, 10, 50);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(12, 8, 12);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Helpers
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+
+            const gridHelper = new THREE.GridHelper(CONFIG.boxSize * 2, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            // Bounding Box Visual
+            const boxGeo = new THREE.BoxGeometry(CONFIG.boxSize * 2, CONFIG.boxSize * 2, CONFIG.boxSize * 2);
+            const boxMat = new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true, transparent: true, opacity: 0.3 });
+            const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+            scene.add(boxMesh);
+
+            clock = new THREE.Clock();
+
+            // Initial Setup
+            setupEventListeners();
+            compileFunctions(); // Parse initial inputs
+            createParticles();
+            if (ui.arrows.checked) createArrows();
+
+            // Start Loop
+            animate();
+        }
+
+        // --- Math Parsing Logic ---
+        function compileFunctions() {
+            const xStr = ui.x.value;
+            const yStr = ui.y.value;
+            const zStr = ui.z.value;
+
+            try {
+                // Create a function that takes x, y, z, t and returns the value
+                // We add 'Math.' properties to the scope so user can type 'sin(x)' instead of 'Math.sin(x)'
+                const createFunc = (str) => {
+                    // Basic sanitization
+                    if (!str.trim()) return () => 0;
+                    
+                    // Construct function body
+                    // Destructure Math functions into local scope
+                    const mathKeys = Object.getOwnPropertyNames(Math).filter(k => typeof Math[k] === 'function' || typeof Math[k] === 'number');
+                    const mathArgs = mathKeys.join(',');
+                    
+                    // This wrapper function executes the user string with Math context
+                    const f = new Function(...mathKeys, 'x', 'y', 'z', 't', `return (${str});`);
+                    
+                    // Bind Math constants
+                    return (x, y, z, t) => {
+                        const args = mathKeys.map(k => Math[k]);
+                        return f(...args, x, y, z, t);
+                    };
+                };
+
+                vectorFuncs.x = createFunc(xStr);
+                vectorFuncs.y = createFunc(yStr);
+                vectorFuncs.z = createFunc(zStr);
+
+                // Test run to check for runtime errors immediately
+                vectorFuncs.x(1, 1, 1, 0); 
+                vectorFuncs.y(1, 1, 1, 0); 
+                vectorFuncs.z(1, 1, 1, 0);
+
+                ui.error.style.display = 'none';
+                return true;
+            } catch (e) {
+                ui.error.textContent = "Error: " + e.message;
+                ui.error.style.display = 'block';
+                console.error(e);
+                return false;
+            }
+        }
+
+        // --- Particle System ---
+        function createParticles() {
+            if (particleSystem) scene.remove(particleSystem);
+
+            const count = parseInt(ui.count.value);
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            const range = CONFIG.boxSize;
+
+            for (let i = 0; i < count; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 2 * range;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * range;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 2 * range;
+
+                colors[i * 3] = 1;
+                colors[i * 3 + 1] = 1;
+                colors[i * 3 + 2] = 1;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: CONFIG.particleSize,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+        }
+
+        function updateParticles(delta) {
+            if (!particleSystem) return;
+
+            const positions = particleSystem.geometry.attributes.position.array;
+            const colors = particleSystem.geometry.attributes.color.array;
+            const count = positions.length / 3;
+            const speed = parseFloat(ui.speed.value);
+            const range = CONFIG.boxSize;
+            const useColor = ui.color.checked;
+
+            let vx, vy, vz, mag;
+
+            for (let i = 0; i < count; i++) {
+                const ix = i * 3;
+                const iy = i * 3 + 1;
+                const iz = i * 3 + 2;
+
+                let x = positions[ix];
+                let y = positions[iy];
+                let z = positions[iz];
+
+                // Calculate Vector Field at this position
+                try {
+                    vx = vectorFuncs.x(x, y, z, time);
+                    vy = vectorFuncs.y(x, y, z, time);
+                    vz = vectorFuncs.z(x, y, z, time);
+                } catch (e) {
+                    vx = 0; vy = 0; vz = 0;
+                }
+
+                // Sanity check for NaN or Infinity
+                if (!isFinite(vx)) vx = 0;
+                if (!isFinite(vy)) vy = 0;
+                if (!isFinite(vz)) vz = 0;
+
+                // Update Position (Euler Integration)
+                x += vx * speed * delta;
+                y += vy * speed * delta;
+                z += vz * speed * delta;
+
+                // Boundary Check - Respawn if out of bounds
+                if (Math.abs(x) > range || Math.abs(y) > range || Math.abs(z) > range) {
+                    // Respawn randomly
+                    x = (Math.random() - 0.5) * 2 * range;
+                    y = (Math.random() - 0.5) * 2 * range;
+                    z = (Math.random() - 0.5) * 2 * range;
+                    
+                    // Reset velocity visual for spawn frame (optional)
+                }
+
+                positions[ix] = x;
+                positions[iy] = y;
+                positions[iz] = z;
+
+                // Colorize based on velocity magnitude
+                if (useColor) {
+                    mag = Math.sqrt(vx*vx + vy*vy + vz*vz);
+                    // Map magnitude to color (Blue -> Cyan -> White)
+                    const t = Math.min(mag / 5.0, 1.0); 
+                    colors[ix] = 0.2 + 0.8 * t;     // R
+                    colors[iy] = 0.5 + 0.5 * t;     // G
+                    colors[iz] = 1.0;               // B
+                } else {
+                    colors[ix] = 1; colors[iy] = 1; colors[iz] = 1;
+                }
+            }
+
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+            particleSystem.geometry.attributes.color.needsUpdate = true;
+        }
+
+        // --- Static Arrow Grid ---
+        function createArrows() {
+            if (arrowGroup) scene.remove(arrowGroup);
+            arrowGroup = new THREE.Group();
+
+            const step = 2; // Distance between arrows
+            const range = CONFIG.boxSize;
+            const headLen = 0.2 * CONFIG.arrowLength;
+            const headWidth = 0.2 * CONFIG.arrowLength;
+            const color = 0x666666;
+
+            for (let x = -range; x <= range; x += step) {
+                for (let y = -range; y <= range; y += step) {
+                    for (let z = -range; z <= range; z += step) {
+                        // Sample field
+                        let vx = 0, vy = 0, vz = 0;
+                        try {
+                             vx = vectorFuncs.x(x, y, z, time);
+                             vy = vectorFuncs.y(x, y, z, time);
+                             vz = vectorFuncs.z(x, y, z, time);
+                        } catch(e) {}
+
+                        const len = Math.sqrt(vx*vx + vy*vy + vz*vz);
+                        
+                        if (len > 0.01) {
+                            const dir = new THREE.Vector3(vx, vy, vz).normalize();
+                            const origin = new THREE.Vector3(x, y, z);
+                            // Scale arrow length slightly by magnitude, clamped
+                            const actualLen = Math.min(len * 0.2, CONFIG.arrowLength);
+                            
+                            const arrowHelper = new THREE.ArrowHelper(dir, origin, actualLen, color, headLen, headWidth);
+                            arrowGroup.add(arrowHelper);
+                        }
+                    }
+                }
+            }
+            scene.add(arrowGroup);
+        }
+
+        // --- UI & Logic Handling ---
+        function setupEventListeners() {
+            window.addEventListener('resize', onWindowResize, false);
+
+            ui.updateBtn.addEventListener('click', () => {
+                if(compileFunctions()) {
+                    createParticles();
+                    if (ui.arrows.checked) createArrows();
+                }
+            });
+
+            ui.speed.addEventListener('input', (e) => {
+                ui.valSpeed.textContent = e.target.value;
+            });
+
+            ui.count.addEventListener('input', (e) => {
+                ui.valCount.textContent = e.target.value;
+                // Debounce recreation
+                clearTimeout(window.resizeTimer);
+                window.resizeTimer = setTimeout(createParticles, 200);
+            });
+
+            ui.arrows.addEventListener('change', () => {
+                if (ui.arrows.checked) createArrows();
+                else if (arrowGroup) {
+                    scene.remove(arrowGroup);
+                    arrowGroup = null;
+                }
+            });
+
+            ui.toggle.addEventListener('click', () => {
+                ui.panel.classList.toggle('collapsed');
+                ui.toggle.textContent = ui.panel.classList.contains('collapsed') ? 'Show UI' : 'Hide UI';
+            });
+
+            ui.preset.addEventListener('change', loadPreset);
+        }
+
+        function loadPreset() {
+            const val = ui.preset.value;
+            let fx, fy, fz;
+
+            switch(val) {
+                case 'saddle':
+                    fx = "y"; fy = "x"; fz = "-z";
+                    break;
+                case 'spiral':
+                    fx = "-y - x*0.2"; fy = "x - y*0.2"; fz = "0.1";
+                    break;
+                case 'sink':
+                    fx = "-x"; fy = "-y"; fz = "-z";
+                    break;
+                case 'chaos':
+                    // Rossler/Lorenz inspired simplicity
+                    fx = "-y - z"; 
+                    fy = "x + 0.2*y"; 
+                    fz = "0.2 + z*(x - 5.7)";
+                    break;
+                case 'wave':
+                    fx = "sin(z + t)"; fy = "cos(x + t)"; fz = "sin(y)";
+                    break;
+                case 'time':
+                    fx = "x * sin(t)"; fy = "y * cos(t)"; fz = "z * sin(t + 1)";
+                    break;
+                default: 
+                    return;
+            }
+
+            ui.x.value = fx;
+            ui.y.value = fy;
+            ui.z.value = fz;
+            
+            ui.updateBtn.click();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            time += delta;
+
+            updateParticles(delta);
+            
+            // If arrows are static (no 't' in function) we don't need to update them.
+            // If function is time variant, we technically should update arrows, 
+            // but that's computationally heavy. Let's leave arrows static for current T when generated.
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Boot
+        init();
+    </script>
+</body>
+</html>
