@@ -6,18 +6,20 @@
     <title>3D Vector Field Visualizer</title>
     <style>
         :root {
-            --bg-color: #111;
-            --panel-bg: rgba(20, 20, 30, 0.85);
-            --text-color: #eee;
-            --accent-color: #4f9fff;
-            --error-color: #ff5555;
+            --bg-color: #1a1a1a;
+            --panel-bg: rgba(40, 40, 45, 0.9);
+            --text-color: #f0f0f0;
+            --accent-color: #8ab4f8;
+            --error-color: #f28b82;
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --border-color: rgba(255, 255, 255, 0.1);
         }
 
         body {
             margin: 0;
             overflow: hidden;
             background-color: var(--bg-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: var(--text-color);
         }
 
@@ -29,44 +31,55 @@
 
         #ui-panel {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            width: 320px;
+            top: 15px;
+            left: 15px;
+            width: 330px;
             background: var(--panel-bg);
-            backdrop-filter: blur(10px);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            max-height: 90vh;
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            max-height: calc(100vh - 30px);
             overflow-y: auto;
-            transition: transform 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         #ui-panel.collapsed {
-            transform: translateX(-340px);
+            transform: translateX(calc(-100% - 25px));
         }
 
         #toggle-ui {
             position: absolute;
-            top: 10px;
-            left: 340px;
-            background: var(--panel-bg);
+            top: 15px;
+            right: 15px;
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.1);
             color: white;
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 8px 12px;
+            border: none;
+            padding: 0;
             cursor: pointer;
-            border-radius: 4px;
-            transition: left 0.3s ease;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            line-height: 1;
+            transition: background 0.2s, transform 0.3s ease;
             z-index: 10;
         }
-        
-        #ui-panel.collapsed + #toggle-ui {
-            left: 10px;
+
+        #toggle-ui:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        #ui-panel.collapsed #toggle-ui {
+             transform: scaleX(-1);
         }
 
         h2 {
-            margin: 0 0 15px 0;
+            margin: 0 40px 15px 0;
             font-size: 18px;
             color: var(--accent-color);
             border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -99,38 +112,60 @@
 
         input[type="text"], select {
             flex: 1;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid #444;
-            color: white;
-            padding: 6px;
-            border-radius: 4px;
-            font-family: monospace;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-family: 'Roboto Mono', monospace;
+            transition: border-color 0.2s, background-color 0.2s;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, select:focus {
             outline: none;
             border-color: var(--accent-color);
+            background-color: rgba(138, 180, 248, 0.1);
         }
 
         input[type="range"] {
             width: 100%;
-            margin: 5px 0;
+            margin: 8px 0;
+            -webkit-appearance: none;
+            background: transparent;
         }
 
-        button {
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: var(--input-bg);
+            border-radius: 2px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
             background: var(--accent-color);
-            color: white;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        button#update-btn {
+            background: var(--accent-color);
+            color: #111;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+            padding: 10px 16px;
+            border-radius: 6px;
             cursor: pointer;
             width: 100%;
             font-weight: bold;
             transition: background 0.2s;
         }
 
-        button:hover {
-            background: #3a85e0;
+        button#update-btn:hover {
+            background: #a2c4fa;
         }
 
         .checkbox-row {
@@ -161,9 +196,10 @@
         }
 
         /* Scrollbar styling */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #222; }
-        ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; transition: background 0.2s; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
     </style>
     <!-- Import Three.js as ES Module -->
     <script type="importmap">
@@ -174,12 +210,16 @@
             }
         }
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <div id="canvas-container"></div>
 
     <div id="ui-panel">
+        <button id="toggle-ui">&#10140;</button>
         <h2>Vector Field Controls</h2>
 
         <div class="control-group">
@@ -240,8 +280,6 @@
             Left Click: Rotate | Right Click: Pan | Scroll: Zoom
         </div>
     </div>
-
-    <button id="toggle-ui">Hide UI</button>
 
     <script type="module">
         import * as THREE from 'three';
@@ -556,7 +594,6 @@
 
             ui.toggle.addEventListener('click', () => {
                 ui.panel.classList.toggle('collapsed');
-                ui.toggle.textContent = ui.panel.classList.contains('collapsed') ? 'Show UI' : 'Hide UI';
             });
 
             ui.preset.addEventListener('change', loadPreset);
