@@ -35,6 +35,7 @@
             background: var(--panel-bg);
             backdrop-filter: blur(10px);
             padding: 15px;
+            padding-top: 55px;
             border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
@@ -57,15 +58,16 @@
                 top: 5px;
                 left: 5px;
                 padding: 12px;
+                padding-top: 55px;
                 max-height: calc(100vh - 60px);
                 font-size: 14px;
             }
         }
 
         #toggle-ui {
-            position: fixed;
+            position: absolute;
             top: 10px;
-            left: 340px;
+            left: 10px;
             background: var(--panel-bg);
             color: white;
             border: 1px solid rgba(255,255,255,0.15);
@@ -73,7 +75,7 @@
             cursor: pointer;
             border-radius: 8px;
             transition: all 0.3s ease;
-            z-index: 101;
+            z-index: 102;
             backdrop-filter: blur(10px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             font-weight: 500;
@@ -88,10 +90,6 @@
         #toggle-ui:hover {
             background: rgba(30, 30, 40, 0.95);
             transform: scale(1.05);
-        }
-        
-        #ui-panel.collapsed + #toggle-ui {
-            left: 10px;
         }
         
         @media (max-width: 768px) {
@@ -325,6 +323,7 @@
     <div id="canvas-container"></div>
 
     <div id="ui-panel">
+        <button id="toggle-ui" aria-label="Hide UI Panel">×</button>
         <h2>Vector Field Controls</h2>
 
         <div class="control-group">
@@ -385,8 +384,6 @@
             Left Click: Rotate | Right Click: Pan | Scroll: Zoom
         </div>
     </div>
-
-    <button id="toggle-ui" aria-label="Hide UI Panel">×</button>
 
     <script type="module">
         import * as THREE from 'three';
