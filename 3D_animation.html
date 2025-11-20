@@ -35,7 +35,6 @@
             background: var(--panel-bg);
             backdrop-filter: blur(10px);
             padding: 15px;
-            padding-top: 55px;
             border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
@@ -58,14 +57,13 @@
                 top: 5px;
                 left: 5px;
                 padding: 12px;
-                padding-top: 55px;
                 max-height: calc(100vh - 60px);
                 font-size: 14px;
             }
         }
 
         #toggle-ui {
-            position: absolute;
+            position: fixed;
             top: 10px;
             left: 10px;
             background: var(--panel-bg);
@@ -94,6 +92,8 @@
         
         @media (max-width: 768px) {
             #toggle-ui {
+                top: 5px;
+                left: 5px;
                 width: 44px;
                 height: 44px;
                 font-size: 22px;
@@ -101,7 +101,7 @@
         }
 
         h2 {
-            margin: 0 0 15px 0;
+            margin: 40px 0 15px 0;
             font-size: 18px;
             color: var(--accent-color);
             border-bottom: 2px solid rgba(79, 159, 255, 0.3);
@@ -323,7 +323,6 @@
     <div id="canvas-container"></div>
 
     <div id="ui-panel">
-        <button id="toggle-ui" aria-label="Hide UI Panel">×</button>
         <h2>Vector Field Controls</h2>
 
         <div class="control-group">
@@ -384,6 +383,8 @@
             Left Click: Rotate | Right Click: Pan | Scroll: Zoom
         </div>
     </div>
+
+    <button id="toggle-ui" aria-label="Hide UI Panel">×</button>
 
     <script type="module">
         import * as THREE from 'three';
